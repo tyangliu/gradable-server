@@ -2,8 +2,9 @@ package net.gradable.models
 
 import akka.http.util.DateTime
 import org.anormcypher._
+import org.anormcypher.CypherParser._
 
-case class User(email: String, name: String, school: Option[String], created: DateTime, hashedPassword: String)
+case class User(email: String, name: String, hashedPassword: String, createdAt: DateTime)
 
 object UserRepositoryProtocol {
   case class FindByEmail(email: String)
@@ -19,20 +20,25 @@ class UserRepository extends BaseRepository[User] with UserCypher {
 
 trait UserCypher extends BaseCypher[User] {
   implicit lazy val label  = "User"
-  implicit lazy val fields = Vector("email", "name", "school", "created", "hashedPassword")
+  implicit lazy val fields = Vector("email", "name", "createdAt", "hashedPassword")
+
+  lazy val parser = {
+    str("email")~str("name")~str("hashedPassword")~long("createdAt") map {
+      case email~name~password~createdAt => User(email, name, password, DateTime(createdAt))
+    }
+  }
+
+  def extract(user: User): Vector[(String, Any)] = {
+    val User(email, name, hashedPassword, createdAt) = user
+    Vector("email" -> email, "name" -> name, "hashedPassword" -> hashedPassword, "createdAt" -> createdAt.clicks)
+  }
 
   def create(user: User): Boolean = {
     Cypher(
       """
-        CREATE (n:User {
-          email: {email},
-          name: {name},
-          school: {school},
-          created: {created},
-          hashedPassword: {hashedPassword}
-        })
+        CREATE (n:User { email: {email}, name: {name}, hashedPassword: {hashedPassword}, createdAt: {createdAt} })
       """
-    ).on(extractFields(user): _*).execute()
+    ).on(extract(user): _*).execute()
   }
 
   def update(user: User): Boolean = ???
@@ -47,34 +53,11 @@ trait UserCypher extends BaseCypher[User] {
   }
 
   def findByEmail(email: String): Option[User] = {
-    val result = Cypher(
+    Cypher(
       s"""
         MATCH (n:User { email: {email} })
         RETURN ${mkReturnStatement("n")}
       """
-    ).on("email" -> email)()
-
-    mapResult(result).headOption
-  }
-
-  protected def extractFields(user: User): Vector[(String, Any)] = {
-    val User(email, name, school, created, hashedPassword) = user
-    Vector(
-      "email"          -> email,
-      "name"           -> name,
-      "school"         -> school.getOrElse(""),
-      "created"        -> created.clicks,
-      "hashedPassword" -> hashedPassword
-    )
-  }
-
-  protected def mapResult(rowStream: Stream[CypherResultRow]): Vector[User] = {
-    rowStream.map(row => User(
-      row[String]         ("email"),
-      row[String]         ("name"),
-      row[Option[String]] ("school"),
-      DateTime(row[Long]  ("created")),
-      row[String]         ("hashedPassword")
-    )).toVector
+    ).on("email" -> email).as(parser.*).headOption
   }
 }

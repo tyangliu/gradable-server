@@ -29,29 +29,27 @@ trait BaseCypher[T] {
   implicit def label:  String
   implicit def fields: Seq[String]
 
+  def parser: CypherRowParser[T]
+  def extract(model: T): Vector[(String, Any)]
+
+  def mkReturnStatement(node: String)(implicit fields: Seq[String]): String = {
+    fields.map(field => s"$node.$field as $field").mkString(", ")
+  }
+
   def create(model: T): Boolean
   def update(model: T): Boolean
   def delete(model: T): Boolean
 
   def findAll()(implicit label: String): Vector[T] = {
-    val result = Cypher(
+    Cypher(
       s"""
         MATCH (n:$label)
         RETURN ${mkReturnStatement("n")}
       """
-    )()
-
-    mapResult(result)
+    ).as(parser.*).toVector
   }
 
   def findBy(args: (String, Any)*)(implicit label: String): Seq[T] = {
     ???
   }
-
-  protected def mkReturnStatement(node: String)(implicit fields: Seq[String]): String = {
-    fields.map(field => s"$node.$field as $field").mkString(", ")
-  }
-
-  protected def extractFields(model: T): Vector[(String, Any)]
-  protected def mapResult(rowStream: Stream[CypherResultRow]): Vector[T]
 }
