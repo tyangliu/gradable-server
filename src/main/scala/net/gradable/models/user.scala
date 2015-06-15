@@ -38,7 +38,7 @@ trait UserCypher extends BaseCypher[User] {
       """
         CREATE (n:User { email: {email}, name: {name}, hashedPassword: {hashedPassword}, createdAt: {createdAt} })
       """
-    ).on(extract(user): _*).execute()
+    ).on(extract(user): _*).execute
   }
 
   def update(user: User): Boolean = ???
@@ -49,7 +49,7 @@ trait UserCypher extends BaseCypher[User] {
         MATCH (n:User { email: {email} })
         DELETE n
       """
-    ).on("email" -> user.email).execute()
+    ).on("email" -> user.email).execute
   }
 
   def findByEmail(email: String): Option[User] = {
