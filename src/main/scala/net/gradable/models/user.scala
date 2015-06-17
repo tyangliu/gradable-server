@@ -1,8 +1,6 @@
 package net.gradable.models
 
-import akka.http.util.DateTime
-import org.anormcypher._
-import org.anormcypher.CypherParser._
+import akka.http.scaladsl.model.DateTime
 
 case class User(email: String, name: String, hashedPassword: String, createdAt: DateTime)
 
@@ -19,12 +17,16 @@ class UserRepository extends BaseRepository[User] with UserCypher {
 }
 
 trait UserCypher extends BaseCypher[User] {
-  implicit lazy val label  = "User"
-  implicit lazy val fields = Vector("email", "name", "createdAt", "hashedPassword")
+  import org.anormcypher._
+  import org.anormcypher.CypherParser._
+  import CypherParserExtensions._
+
+  lazy val label  = "User"
+  lazy val fields = Vector("email", "name", "createdAt", "hashedPassword")
 
   lazy val parser = {
-    str("email")~str("name")~str("hashedPassword")~long("createdAt") map {
-      case email~name~password~createdAt => User(email, name, password, DateTime(createdAt))
+    uuid("uuid")~str("email")~str("name")~str("hashedPassword")~dateTime("createdAt") map {
+      case uuid~email~name~password~createdAt => WithId(Id(uuid), User(email, name, password, createdAt))
     }
   }
 
@@ -52,7 +54,7 @@ trait UserCypher extends BaseCypher[User] {
     ).on("email" -> user.email).execute
   }
 
-  def findByEmail(email: String): Option[User] = {
+  def findByEmail(email: String): Option[WithId[User]] = {
     Cypher(
       s"""
         MATCH (n:User { email: {email} })
