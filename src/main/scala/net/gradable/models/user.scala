@@ -19,7 +19,7 @@ class UserRepository extends BaseRepository[User] with UserCypher {
 trait UserCypher extends BaseCypher[User] {
   import org.anormcypher._
   import org.anormcypher.CypherParser._
-  import CypherParserExtensions._
+  import net.gradable.util.CypherParserExtensions._
 
   lazy val label  = "User"
   lazy val fields = Vector("email", "name", "hashedPassword", "createdAt")
