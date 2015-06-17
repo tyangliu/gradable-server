@@ -22,7 +22,7 @@ trait UserCypher extends BaseCypher[User] {
   import CypherParserExtensions._
 
   lazy val label  = "User"
-  lazy val fields = Vector("email", "name", "createdAt", "hashedPassword")
+  lazy val fields = Vector("email", "name", "hashedPassword", "createdAt")
 
   lazy val parser = {
     uuid("uuid")~str("email")~str("name")~str("hashedPassword")~dateTime("createdAt") map {
